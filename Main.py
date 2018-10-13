@@ -4,10 +4,11 @@ import datetime
 from threading import Thread
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BOARD)
-flow1=37
-flow21=35
-flow22=15
-ir=13
+ #declarations 
+flow1=37 #main tank
+flow21=35 #washbasin
+flow22=15 #shower
+ir=13 #ir sensor
 minimum=0.5
 GPIO.setup(flow1,GPIO.IN)
 GPIO.setup(flow21,GPIO.IN)
@@ -29,21 +30,21 @@ def wasteage() :
     if flow(flow22)<0.2 :
         if flow(flow1)>flow(flow21) :
             msg(4)
-def msg(y) :
+def msg(y) : #options for app
     co=urllib.request.urlopen('https://api.thingspeak.com/update?api_key=KOK15FO9CD4REIXM&field1=%f'%y)
     co.read()
     co.close()
-def datat() :
+def datat() : #function for saving data in csv file
     a=flow(flow21)
     b=flow(flow22)
-    co=urllib.request.urlopen('https://api.thingspeak.com/update?api_key=KOK15FO9CD4REIXM&field2={0}&field3={1}'.format(a,b))
+    '''co=urllib.request.urlopen('https://api.thingspeak.com/update?api_key=KOK15FO9CD4REIXM&field2={0}&field3={1}'.format(a,b))
     co.read()
-    co.close()
+    co.close()'''
     with open("/home/pi/rohit/so.csv","a") as log :
         k=datetime.datetime.now()
         log.write("{0},{1},{2}\n".format(a,b,k))
         
-def checkshower() :
+def checkshower() : #function for checking conditions at shower 
     
     if flow(flow22) >0.1 :
         k=datetime.datetime.now()+datetime.timedelta(minutes=15)
@@ -51,7 +52,7 @@ def checkshower() :
             if datetime.datetime.now()==k :
                 msg(5)
                 return
-def washbasin() :
+def washbasin() :  #function for checking conditions at washbasin
     if flow(flow21) >0.1 :
         if GPIO.input(ir) == False :
             k=datetime.datetime.now()+datetime.timedelta(seconds=40)
@@ -64,7 +65,7 @@ def washbasin() :
             
             
     
-def flow(a) :
+def flow(a) :   #function for calculating flow rate
     rate_cnt=0
     tot_cnt=0
     minutes=0
@@ -85,14 +86,22 @@ def flow(a) :
                     rate_cnt = rate_cnt
                     tot_cnt = tot_cnt
                 gpio_last = gpio_cur
-                minutes += 1
+                minutes += 1           
     print('\nLiters / min ',round(rate_cnt*constant,4))
     print('Total Liters ',round(tot_cnt * constant,4))
     print('Time (min & clock)',minutes, '\t',time.asctime(time.localtime(time.time())),'\n')
+    z=round(rate_cnt*constant,4)
+    if a==flow21 :
+        co=urllib.request.urlopen('https://api.thingspeak.com/update?api_key=KOK15FO9CD4REIXM&field2=%f'%z)
+    else :
+        co=urllib.request.urlopen('https://api.thingspeak.com/update?api_key=KOK15FO9CD4REIXM&field3=%f'%z)
+    co.read()
+    co.close()
+        
     return round(tot_cnt * constant,4);
-            #GPIO.cleanup()    
+            
            
-        #wastage
+        #thteads declarations 
 while True :
     t1=Thread(wasteage())
     t2=Thread(checkshower())
